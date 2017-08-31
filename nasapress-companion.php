@@ -293,8 +293,7 @@ function display_portal_posts( $atts ) {
 
   if(environment() != 'development') {
 		$memcache = new Memcache;
-    //todo-config
-		$memcache->connect('YOUR_MEMCACHE_HOST', YOUR_MEMCACHE_PORT);
+		$memcache->connect('127.0.0.1', 11211);
 		$grcNews = false;
 		if($memcache) {
 			$grcNews = $memcache->get('grc-news');
@@ -403,8 +402,7 @@ function display_spinoff_posts( $atts ) {
 
   if(environment() != 'development') {
 		$memcache = new Memcache;
-		//todo-config
-		$memcache->connect('YOUR_MEMCACHE_HOST', YOUR_MEMCACHE_PORT);
+		$memcache->connect('127.0.0.1', 11211);
 		$spinoffs = false;
 		if($memcache) {
 			$spinoffs = $memcache->get('spinoffs');
@@ -477,9 +475,9 @@ function environment() {
   $svrname = preg_replace('#^https?://#', '', home_url());
   // todo-config
 	switch($svrname) {
-    case 'YOUR_PROD_URL':
+    case 'www1.grc.nasa.gov':
       return 'production';
-    case 'YOUR_TEST_URL':
+    case 'ewwwd1.grc.nasa.gov/wordpress':
       return 'test';
     default:
       return 'development';
