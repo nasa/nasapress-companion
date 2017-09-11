@@ -317,7 +317,7 @@ function display_portal_posts( $atts ) {
     $apiResponse = wp_remote_get($nasaApiUrl.$nasaQueryUrl);
 
     if(is_wp_error($apiResponse)) {
-      return 'Error fetching NASA Portal posts :(';
+      return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
     }
 
     $jsonResponse = json_decode($apiResponse['body']);
@@ -340,7 +340,7 @@ function display_portal_posts( $atts ) {
       $apiResponse = wp_remote_get($nasaApiUrl.$nasaRecordUrl.'/'.$node->nid.'.json');
 
       if(is_wp_error($apiResponse)) {
-        return 'Error fetching NASA Portal posts :(';
+        return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
       }
 
       $grcNewsNode = json_decode($apiResponse['body']);
@@ -418,13 +418,12 @@ function display_spinoff_posts( $atts ) {
     // Query for spinoff data
     //todo-config
     $nasaApiUrl = 'https://technology.nasa.gov/api/query/spinoff/grc';
-    $apiResponse = wp_remote_get($nasaApiUrl);
+    $apiResponse = request_data($nasaApiUrl);
 
-    if(is_wp_error($apiResponse)) {
-      return 'Error fetching NASA Spinoff posts :(';
+    if(!$apiResponse) {
+      return '<div class="grc-list usa-grid">Error fetching NASA Spinoff posts :(</div>';
     }
-
-    $jsonResponse = json_decode($apiResponse['body']);
+    $jsonResponse = json_decode($apiResponse);
     $spinoffs = $jsonResponse->results;
     
     usort($spinoffs, function($a, $b) {
@@ -518,3 +517,66 @@ add_filter( 'gform_field_value_user_agent', 'user_agent_population_function' );
 function user_agent_population_function( $value ) {
   return $_SERVER['HTTP_USER_AGENT'];
 }
+
+/**
+ * Defines the function used to initial the cURL library.
+ *
+ * @param  string  $url        To URL to which the request is being made
+ * @return string  $response   The response, if available; otherwise, null
+ */
+function curl( $url ) {
+
+	$curl = curl_init( $url );
+
+	curl_setopt( $curl, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt( $curl, CURLOPT_HEADER, 0 );
+	curl_setopt( $curl, CURLOPT_USERAGENT, '' );
+	curl_setopt( $curl, CURLOPT_TIMEOUT, 10 );
+
+	$response = curl_exec( $curl );
+	if( 0 !== curl_errno( $curl ) || 200 !== curl_getinfo( $curl, CURLINFO_HTTP_CODE ) ) {
+		$response = null;
+	} // end if
+	curl_close( $curl );
+
+	return $response;
+
+} // end curl
+
+/**
+ * Retrieves the response from the specified URL using one of PHP's outbound request facilities.
+ *
+ * @params	$url	The URL of the feed to retrieve.
+ * @returns		The response from the URL; null if empty.
+ */
+function request_data( $url ) {
+
+	$response = null;
+
+	// First, we try to use wp_remote_get
+	$response = wp_remote_get( $url );
+	if( is_wp_error( $response ) ) {
+
+		// If that doesn't work, then we'll try file_get_contents
+		$response = file_get_contents( $url );
+		if( false == $response ) {
+
+			// And if that doesn't work, then we'll try curl
+			$response = curl( $url );
+			if( null == $response ) {
+				$response = 0;
+			} // end if/else
+
+		} // end if
+
+	} // end if
+
+	// If the response is an array, it's coming from wp_remote_get,
+	// so we just want to capture to the body index for json_decode.
+	if( is_array( $response ) ) {
+		$response = $response['body'];
+	} // end if/else
+
+	return $response;
+
+} // end request_data
