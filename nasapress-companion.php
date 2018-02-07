@@ -49,11 +49,9 @@ function categoryList( $atts ) {
   $childrenCategoryArgs = array('parent' => $categoryId);
   $childrenCategories = get_categories($childrenCategoryArgs);
 
-	// List View Container
-	$content .= '<div id=listView>';
-
   // Loop through each category
   foreach($childrenCategories as $category) {
+
     // Category title
     $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
 
@@ -82,8 +80,12 @@ function categoryList( $atts ) {
     // Loop through each page in the category
     $pageCount = 0;
     while($categoryPages->have_posts()) {
+
       $pageCount++;
       $categoryPages->the_post();
+
+				// List View Container
+				$content .= '<div class=listView>';
 
         // Page thumbnail
         $content .= '<article class="usa-grid-full grc-facilities-facility">';
@@ -104,6 +106,44 @@ function categoryList( $atts ) {
         $content .= '<p>'.get_the_excerpt().'</p>';
         $content .= '</div>';
         $content .= '</article>';
+
+				// End of List View
+				$content .= '</div>';
+
+				// Grid View Container
+				$content .= '<div class=gridView>';
+
+				// Grid item
+				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class="usa-width-one-third grc-grid-item grid-item-space">';
+
+				// Page image
+				$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
+
+				// Page title
+				$content .= '<div class="grc-grid-item-label">';
+				$content .= get_the_title();
+				$content .= '</div>';
+
+				// Overlay
+				$content .= '<div class="grc-grid-item-overlay">';
+				$content .= '<div class="grc-grid-item-text">';
+
+				// Overlay text
+				$content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+				$content .= '</div>';
+				$content .= '</div>';
+
+				$content .= '</a>';
+
+				if($pageCount % 3 == 0) {
+					// End of usa grid full
+					//$content .= '</div>';
+					$pageCount = 1;
+
+			 }
+
+				// End of Grid View
+				$content .= '</div>';
 			}
 
       $content .= '</div>';
@@ -112,64 +152,6 @@ function categoryList( $atts ) {
     wp_reset_postdata();
   }
 
-	$content .= '</div>';
-
-	// Grid View Container
-	$content .= '<div id=gridView>';
-
-	// Loop through each category
-  foreach($childrenCategories as $category) {
-
-		$content .= '<div class="container">';
-
-    // Category title
-    $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
-
-		if($category->description) {
-
-      $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
-      $desc = do_shortcode( $desc ); // Render shortcodes
-
-			$content .= $desc;
-		}
-
-		$pageCount = 0;
-		while($categoryPages->have_posts()) {
-			$pageCount++;
-			$categoryPages->the_post();
-		//} else {
-			// Grid item
-			if($pageCount > 1 && $pageCount % 3 == 1) {
-				$content .= '<div class="usa-grid-full">';
-			}
-			$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class="usa-width-one-third grc-grid-item">';
-
-			// Page image
-			$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
-
-			// Page title
-			$content .= '<div class="grc-grid-item-label">';
-			$content .= get_the_title();
-			$content .= '</div>';
-
-			// Overlay
-			$content .= '<div class="grc-grid-item-overlay">';
-			$content .= '<div class="grc-grid-item-text">';
-
-			// Overlay text
-			$content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
-			$content .= '</div>';
-			$content .= '</div>';
-
-			$content .= '</a>';
-
-		//}
-		}
-
-		$content .= '</div>';
-	}
-
-	$content .='</div>';
 
   // Return the formatted HTML
   $content .= '</div>';
