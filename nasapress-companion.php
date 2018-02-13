@@ -35,7 +35,7 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
  */
 function categoryList( $atts ) {
   $content = '<div class="grc-list">';
-  $displayType = $_GET['display'] ? $_GET['display'] : 'grid';
+  //$displayType = $_GET['display'] ? $_GET['display'] : 'grid';
 
   // Get the current category ID
   $categoryId = get_category_by_slug($atts['slug'])->term_id;
@@ -57,13 +57,11 @@ function categoryList( $atts ) {
 
 		if($category->description) {
 
-      $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
-      $desc = do_shortcode( $desc ); // Render shortcodes
+	    $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
+	    $desc = do_shortcode( $desc ); // Render shortcodes
 
 			$content .= $desc;
 		}
-
-    $content .= '<div class="usa-grid-full">';
 
     // Query for category pages
     $categoryPagesArgs = array(
@@ -84,11 +82,11 @@ function categoryList( $atts ) {
       $pageCount++;
       $categoryPages->the_post();
 
-				// List View Container
-				$content .= '<div class=listView>';
+	//==========================List View Container===============================
+				//$content .= '<div class="listView">';
 
         // Page thumbnail
-        $content .= '<article class="usa-grid-full grc-facilities-facility">';
+        $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
         $content .= '<div class="usa-width-one-third">';
         $content .= '<figure class="wp-caption">';
         $content .= get_the_post_thumbnail(null, 'thumbnail');
@@ -107,14 +105,16 @@ function categoryList( $atts ) {
         $content .= '</div>';
         $content .= '</article>';
 
-				// End of List View
-				$content .= '</div>';
+				//$content .= '</div>';
+ //=========================End of List View====================================
 
-				// Grid View Container
-				$content .= '<div class=gridView>';
+ //==========================Grid View Container================================
+
+				if($pageCount % 3 == 1)
+					$content .= '<div class="usa-grid-full">';
 
 				// Grid item
-				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class="usa-width-one-third grc-grid-item grid-item-space">';
+				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
 
 				// Page image
 				$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
@@ -135,18 +135,11 @@ function categoryList( $atts ) {
 
 				$content .= '</a>';
 
-				if($pageCount % 3 == 0) {
-					// End of usa grid full
-					//$content .= '</div>';
-					$pageCount = 1;
+				if($pageCount % 3 == 0)
+					$content .= '</div>'; // USA Grid Full
 
-			 }
-
-				// End of Grid View
-				$content .= '</div>';
+//======================End of Grid View Containe==r============================
 			}
-
-      $content .= '</div>';
 
     // Reset the WP_Query globals
     wp_reset_postdata();
