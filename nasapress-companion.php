@@ -29,21 +29,19 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
   return $out;
 }
 
-//===========================================================================
+//==============================================================================
 /**
  * Add shortcode for category listings
  */
 function categoryList( $atts ) {
   $content = '<div class="grc-list">';
-  //$displayType = $_GET['display'] ? $_GET['display'] : 'grid';
 
   // Get the current category ID
   $categoryId = get_category_by_slug($atts['slug'])->term_id;
   $disableGridBtn = '';
 
-	// Gridview and Listview buttons
-	$content .= '<span><button id="gridButton" class="btn">GRID</button>';
-	$content .= '<button id="listButton" class="btn">LIST</button></span>';
+	// Gridview and Listview button
+	$content .= '<span><button id="switchViewBtn" class="btn">Switch to List View</button></span>';
 
   // Get any direct children of the current category
   $childrenCategoryArgs = array('parent' => $categoryId);
@@ -83,7 +81,6 @@ function categoryList( $atts ) {
       $categoryPages->the_post();
 
 	//==========================List View Container===============================
-				//$content .= '<div class="listView">';
 
         // Page thumbnail
         $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
@@ -105,7 +102,6 @@ function categoryList( $atts ) {
         $content .= '</div>';
         $content .= '</article>';
 
-				//$content .= '</div>';
  //=========================End of List View====================================
 
  //==========================Grid View Container================================
@@ -138,7 +134,12 @@ function categoryList( $atts ) {
 				if($pageCount % 3 == 0)
 					$content .= '</div>'; // USA Grid Full
 
-//======================End of Grid View Containe==r============================
+//======================End of Grid View Containe===============================
+			}
+
+			if($pageCount % 3 != 0) {
+				$content .= '</div>'; // USA Grid Full
+				$pagecount = 0;
 			}
 
     // Reset the WP_Query globals
@@ -152,7 +153,7 @@ function categoryList( $atts ) {
 }
 add_shortcode('category-list', 'categoryList');
 
-//====================================================================
+//==============================================================================
 
 /**
  * Add shortcode for child page listings
