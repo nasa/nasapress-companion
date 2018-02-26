@@ -41,7 +41,7 @@ function categoryList( $atts ) {
   $disableGridBtn = '';
 
 	// Gridview and Listview button
-	$content .= '<span><button id="switchViewBtn" class="btn">Switch to List View</button></span>';
+	$content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
 
   // Get any direct children of the current category
   $childrenCategoryArgs = array('parent' => $categoryId);
