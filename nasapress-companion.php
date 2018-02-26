@@ -29,24 +29,19 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
   return $out;
 }
 
+//==============================================================================
 /**
  * Add shortcode for category listings
  */
 function categoryList( $atts ) {
   $content = '<div class="grc-list">';
-  $displayType = $_GET['display'] ? $_GET['display'] : 'grid';
 
   // Get the current category ID
   $categoryId = get_category_by_slug($atts['slug'])->term_id;
   $disableGridBtn = '';
 
-  // View switching buttons
-  if($displayType == 'grid') {
-    $content .= '<div class="clearfix">&nbsp;</div><p class="grc-grid-view-links" id="jmp' . $categoryId . '"><span class="grc-left-toggle-link-active"><i class="fa fa-th-large" aria-hidden="true"></i> Grid View</span><a href="?display=list#jmp' . $categoryId . '" class="grc-grid-link"><i class="fa fa-list" aria-hidden="true"></i>List View</a></p>';
-  }
-  else if($displayType == 'list') {
-    $content .= '<div class="clearfix">&nbsp;</div><p class="grc-grid-view-links" id="jmp' . $categoryId . '"><a href=".#jmp' . $categoryId . '" class="grc-grid-link"><i class="fa fa-th-large" aria-hidden="true"></i>Grid View</a><span class="grc-right-toggle-link-active"><i class="fa fa-list" aria-hidden="true"></i> List View</span></p>';
-  }
+	// Gridview and Listview button
+	$content .= '<span><button id="switchViewBtn" class="btn">Switch to List View</button></span>';
 
   // Get any direct children of the current category
   $childrenCategoryArgs = array('parent' => $categoryId);
@@ -54,19 +49,17 @@ function categoryList( $atts ) {
 
   // Loop through each category
   foreach($childrenCategories as $category) {
+
     // Category title
     $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
 
 		if($category->description) {
-      
-      $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
-      $desc = do_shortcode( $desc ); // Render shortcodes
-      
+
+	    $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
+	    $desc = do_shortcode( $desc ); // Render shortcodes
+
 			$content .= $desc;
 		}
-
-    if($displayType == 'grid')
-      $content .= '<div class="usa-grid-full">';
 
     // Query for category pages
     $categoryPagesArgs = array(
@@ -83,12 +76,14 @@ function categoryList( $atts ) {
     // Loop through each page in the category
     $pageCount = 0;
     while($categoryPages->have_posts()) {
+
       $pageCount++;
       $categoryPages->the_post();
 
-      if($displayType == 'list') {
+	//==========================List View Container===============================
+
         // Page thumbnail
-        $content .= '<article class="usa-grid-full grc-facilities-facility">';
+        $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
         $content .= '<div class="usa-width-one-third">';
         $content .= '<figure class="wp-caption">';
         $content .= get_the_post_thumbnail(null, 'thumbnail');
@@ -106,47 +101,59 @@ function categoryList( $atts ) {
         $content .= '<p>'.get_the_excerpt().'</p>';
         $content .= '</div>';
         $content .= '</article>';
-      } else {
-        // Grid item
-        if($pageCount > 1 && $pageCount % 3 == 1) {
-          $content .= '</div><div class="usa-grid-full">';
-        }
-        $content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class="usa-width-one-third grc-grid-item">';
 
-        // Page image
-        $content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
+ //=========================End of List View====================================
 
-        // Page title
-        $content .= '<div class="grc-grid-item-label">';
-        $content .= get_the_title();
-        $content .= '</div>';
+ //==========================Grid View Container================================
 
-        // Overlay
-        $content .= '<div class="grc-grid-item-overlay">';
-        $content .= '<div class="grc-grid-item-text">';
+				if($pageCount % 3 == 1)
+					$content .= '<div class="usa-grid-full">';
 
-        // Overlay text
-        $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
-        $content .= '</div>';
-        $content .= '</div>';
+				// Grid item
+				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
 
-        $content .= '</a>';
+				// Page image
+				$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
 
-      }
-    }
+				// Page title
+				$content .= '<div class="grc-grid-item-label">';
+				$content .= get_the_title();
+				$content .= '</div>';
 
-    if($displayType == 'grid')
-      $content .= '</div>';
+				// Overlay
+				$content .= '<div class="grc-grid-item-overlay">';
+				$content .= '<div class="grc-grid-item-text">';
+
+				// Overlay text
+				$content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+				$content .= '</div>';
+				$content .= '</div>';
+
+				$content .= '</a>';
+
+				if($pageCount % 3 == 0)
+					$content .= '</div>'; // USA Grid Full
+
+//======================End of Grid View Containe===============================
+			}
+
+			if($pageCount % 3 != 0) {
+				$content .= '</div>'; // USA Grid Full
+				$pagecount = 0;
+			}
 
     // Reset the WP_Query globals
     wp_reset_postdata();
   }
+
 
   // Return the formatted HTML
   $content .= '</div>';
   return $content;
 }
 add_shortcode('category-list', 'categoryList');
+
+//==============================================================================
 
 /**
  * Add shortcode for child page listings
@@ -302,9 +309,9 @@ function display_portal_posts( $atts ) {
 	else {
 		$grcNews = false;
 	}
-  
+
   $nodeList == false;
-  
+
   if($grcNews === false) { // No valid cached values
     // API Endpoints
     $nasaApiUrl = 'https://www.nasa.gov/api/1';
@@ -324,7 +331,7 @@ function display_portal_posts( $atts ) {
     $grcNews = $nodeList;
     $grcNewsToCache = [];
   }
-  
+
 	$content = '<div class="grc-list usa-grid">';
 	$i = 0;
 
@@ -333,7 +340,7 @@ function display_portal_posts( $atts ) {
 		if($i >= $limit) {
 			break;
 		}
-    
+
     if($nodeList) { // Not using cached values.
       // Query for the individual Ubernode (post) information
       $apiResponse = wp_remote_get($nasaApiUrl.$nasaRecordUrl.'/'.$node->nid.'.json');
@@ -373,7 +380,7 @@ function display_portal_posts( $atts ) {
 
 		$i++;
 	}
-  
+
   if(environment() != 'development') {
     if($nodeList) { // If $nodeList is false it means we are using cached values.
       $memcache->set('grc-news', $grcNewsToCache, 0, 86400); // Cache for one day.
@@ -423,7 +430,7 @@ function display_spinoff_posts( $atts ) {
     }
     $jsonResponse = json_decode($apiResponse);
     $spinoffs = $jsonResponse->results;
-    
+
     usort($spinoffs, function($a, $b) {
       $aPieces = explode('-', $a[1]);
       $bPieces = explode('-', $b[1]);
@@ -436,7 +443,7 @@ function display_spinoff_posts( $atts ) {
       }
       return ($aNum > $bNum) ? -1 : 1;
     });
-    
+
     if(environment() != 'development') {
 			$memcache->set('spinoffs', $spinoffs, 0, 86400); // Cache for one day.
 		}
