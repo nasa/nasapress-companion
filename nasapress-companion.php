@@ -139,7 +139,6 @@ function categoryList( $atts ) {
 
 			if($pageCount % 3 != 0) {
 				$content .= '</div>'; // USA Grid Full
-				$pagecount = 0;
 			}
 
     // Reset the WP_Query globals
