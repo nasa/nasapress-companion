@@ -410,7 +410,6 @@ function display_spinoff_posts( $atts ) {
 		$memcache = new Memcache;
 		$memcache->connect('127.0.0.1', 11211);
 		$spinoffs = false;
-    $memcache->flush();
 		if($memcache) {
 			$spinoffs = $memcache->get('spinoffs');
 		}
