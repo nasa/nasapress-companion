@@ -429,7 +429,11 @@ function display_spinoff_posts( $atts ) {
     }
     $jsonResponse = json_decode($apiResponse);
     $spinoffs = $jsonResponse->results;
-
+    
+    if(!$spinoffs) {
+      return '<div class="grc-list usa-grid">Error fetching NASA Spinoff posts :(</div>';
+    }
+    
     usort($spinoffs, function($a, $b) {
       $aPieces = explode('-', $a[1]);
       $bPieces = explode('-', $b[1]);
