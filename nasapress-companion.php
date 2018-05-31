@@ -372,7 +372,7 @@ function display_portal_posts( $atts ) {
 		$content .= '<div class="grc-grid-item-text">';
 
 		// Overlay text
-		$content .= esc_html(the_excerpt_max_charlength($grcNewsNode->ubernode->imageFeatureCaption ? $grcNewsNode->ubernode->imageFeatureCaption : 'Read more', 160));
+		$content .= esc_html(the_excerpt_max_charlength($grcNewsNode->ubernode->imageFeatureCaption ? $grcNewsNode->ubernode->imageFeatureCaption : $grcNewsNode->ubernode->body ? wp_strip_all_tags($grcNewsNode->ubernode->body) : 'Read more', 160));
 		$content .= '<i class="fa fa-external-link" aria-hidden="true"></i></div>';
 		$content .= '</div>';
 
@@ -431,7 +431,11 @@ function display_spinoff_posts( $atts ) {
     }
     $jsonResponse = json_decode($apiResponse);
     $spinoffs = $jsonResponse->results;
-
+    
+    if(!$spinoffs) {
+      return '<div class="grc-list usa-grid">Error fetching NASA Spinoff posts :(</div>';
+    }
+    
     usort($spinoffs, function($a, $b) {
       $aPieces = explode('-', $a[1]);
       $bPieces = explode('-', $b[1]);
