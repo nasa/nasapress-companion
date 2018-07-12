@@ -312,7 +312,7 @@ function categoryPostsList( $atts ) {
   // Query for category posts
   $categoryPostsArgs = array(
     'post_type' => 'post',
-    'order' => 'ASC',
+    'order' => 'DESC',
     'orderby' => 'date',
     'tax_query' => array(
       array(
@@ -391,6 +391,10 @@ function categoryPostsList( $atts ) {
 
   if($postCount % 3 != 0) {
     $content .= '</div>'; // USA Grid Full
+  }
+  
+  if($category->count > 6) { // if there are more than 6 posts in the category display see more posts link.
+    $content .= '<div class="usa-grid-full"><div class="usa-width-one-whole"><a href="' . get_category_link($category->cat_ID) . '" class="usa-button usa-button-secondary">More ' . $category->name . ' news</a></div></div>'; // USA Grid Full
   }
 
   // Reset the WP_Query globals
