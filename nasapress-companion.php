@@ -393,7 +393,7 @@ function categoryPostsList( $atts ) {
     $content .= '</div>'; // USA Grid Full
   }
   
-  if($category->count > 6) { // if there are more than 6 posts in the category display see more posts link.
+  if($categoryPosts->found_posts > 6) { // if there are more than 6 posts in the category display see more posts link.
     $content .= '<div class="usa-grid-full"><div class="usa-width-one-whole"><a href="' . get_category_link($category->cat_ID) . '" class="usa-button usa-button-secondary">More ' . $category->name . ' news</a></div></div>'; // USA Grid Full
   }
 
