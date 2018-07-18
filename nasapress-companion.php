@@ -65,7 +65,7 @@ function categoryList( $atts ) {
     $categoryPagesArgs = array(
       'post_type' => 'page',
       'order' => 'ASC',
-      'orderby' => 'menu_order',
+      'orderby' => 'title',
       'taxonomy' => 'category',
       'field' => 'slug',
       'term' => $category->slug,
@@ -174,6 +174,7 @@ function childrenList( $atts ) {
   $display = is_array($atts) && array_key_exists('display', $atts) ? $atts['display'] : 'both';
   $fullGrid = is_array($atts) && array_key_exists('fullgrid', $atts) ? $atts['fullgrid'] : 'yes';
   $limit = is_array($atts) && array_key_exists('limit', $atts) ? $atts['limit'] : -1;
+  $pages = is_array($atts) && array_key_exists('pages', $atts) ? explode(',', preg_replace( '/\s*,\s*/', ',', filter_var( $atts['pages'], FILTER_SANITIZE_STRING ) ) ) : false;
 
   $disableGridBtn = '';
 
@@ -199,13 +200,24 @@ function childrenList( $atts ) {
 
   // Get any direct children of the current page
 // Query for category pages
+  if($pages) {
     $childPagesArgs = array(
+      'post__in' => $pages,
       'post_type' => 'page',
-      'order' => 'ASC',
-      'orderby' => 'menu_order',
+      'orderby' => 'post__in',
       'post_parent' => $pageId,
 			'posts_per_page' => $limit
     );
+  }
+  else {
+    $childPagesArgs = array(
+      'post_type' => 'page',
+      'order' => 'ASC',
+      'orderby' => 'title',
+      'post_parent' => $pageId,
+			'posts_per_page' => $limit
+    );
+  }
     $childPages = new WP_Query($childPagesArgs);
 
     // Loop through each page in the category
