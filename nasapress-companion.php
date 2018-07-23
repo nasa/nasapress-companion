@@ -34,6 +34,9 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
  * Add shortcode for category listings
  */
 function categoryList( $atts ) {
+  $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
+  $orderby = $orderby == 'title' ? 'title' : 'menu_order';
+  
   $content = '<div class="grc-list">';
 
   // Get the current category ID
@@ -65,7 +68,7 @@ function categoryList( $atts ) {
     $categoryPagesArgs = array(
       'post_type' => 'page',
       'order' => 'ASC',
-      'orderby' => 'title',
+      'orderby' => $orderby,
       'taxonomy' => 'category',
       'field' => 'slug',
       'term' => $category->slug,
@@ -175,11 +178,13 @@ function childrenList( $atts ) {
   $fullGrid = is_array($atts) && array_key_exists('fullgrid', $atts) ? $atts['fullgrid'] : 'yes';
   $limit = is_array($atts) && array_key_exists('limit', $atts) ? $atts['limit'] : -1;
   $pages = is_array($atts) && array_key_exists('pages', $atts) ? explode(',', preg_replace( '/\s*,\s*/', ',', filter_var( $atts['pages'], FILTER_SANITIZE_STRING ) ) ) : false;
+  $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
 
   $disableGridBtn = '';
 
   $gridColumns = $columns == 4 ? 'one-fourth' : 'one-third';
   $gridType = $fullGrid == 'yes' ? '-full' : '';
+  $orderby = $orderby == 'title' ? 'title' : 'menu_order';
 
   if($display == 'list') {
     $displayType = 'list';
@@ -213,7 +218,7 @@ function childrenList( $atts ) {
     $childPagesArgs = array(
       'post_type' => 'page',
       'order' => 'ASC',
-      'orderby' => 'title',
+      'orderby' => $orderby,
       'post_parent' => $pageId,
 			'posts_per_page' => $limit
     );
