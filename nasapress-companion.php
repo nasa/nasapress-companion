@@ -34,6 +34,9 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
  * Add shortcode for category listings
  */
 function categoryList( $atts ) {
+  $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
+  $orderby = $orderby == 'title' ? 'title' : 'menu_order';
+  
   $content = '<div class="grc-list">';
 
   // Get the current category ID
@@ -65,7 +68,7 @@ function categoryList( $atts ) {
     $categoryPagesArgs = array(
       'post_type' => 'page',
       'order' => 'ASC',
-      'orderby' => 'menu_order',
+      'orderby' => $orderby,
       'taxonomy' => 'category',
       'field' => 'slug',
       'term' => $category->slug,
@@ -174,11 +177,14 @@ function childrenList( $atts ) {
   $display = is_array($atts) && array_key_exists('display', $atts) ? $atts['display'] : 'both';
   $fullGrid = is_array($atts) && array_key_exists('fullgrid', $atts) ? $atts['fullgrid'] : 'yes';
   $limit = is_array($atts) && array_key_exists('limit', $atts) ? $atts['limit'] : -1;
+  $pages = is_array($atts) && array_key_exists('pages', $atts) ? explode(',', preg_replace( '/\s*,\s*/', ',', filter_var( $atts['pages'], FILTER_SANITIZE_STRING ) ) ) : false;
+  $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
 
   $disableGridBtn = '';
 
   $gridColumns = $columns == 4 ? 'one-fourth' : 'one-third';
   $gridType = $fullGrid == 'yes' ? '-full' : '';
+  $orderby = $orderby == 'title' ? 'title' : 'menu_order';
 
   if($display == 'list') {
     $displayType = 'list';
@@ -199,13 +205,24 @@ function childrenList( $atts ) {
 
   // Get any direct children of the current page
 // Query for category pages
+  if($pages) {
     $childPagesArgs = array(
+      'post__in' => $pages,
       'post_type' => 'page',
-      'order' => 'ASC',
-      'orderby' => 'menu_order',
+      'orderby' => 'post__in',
       'post_parent' => $pageId,
 			'posts_per_page' => $limit
     );
+  }
+  else {
+    $childPagesArgs = array(
+      'post_type' => 'page',
+      'order' => 'ASC',
+      'orderby' => $orderby,
+      'post_parent' => $pageId,
+			'posts_per_page' => $limit
+    );
+  }
     $childPages = new WP_Query($childPagesArgs);
 
     // Loop through each page in the category
@@ -283,6 +300,128 @@ function childrenList( $atts ) {
   return $content;
 }
 add_shortcode('children-list', 'childrenList');
+
+//==============================================================================
+/**
+ * Add shortcode for category posts listings
+ */
+function categoryPostsList( $atts ) {
+  $content = '<div class="grc-list">';
+
+  // Get the current category ID
+  $category = get_category_by_slug($atts['slug']);
+  /*$disableGridBtn = '';
+
+	// Gridview and Listview button
+	$content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
+
+  // Category title
+  $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
+
+  if($category->description) {
+
+    $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
+    $desc = do_shortcode( $desc ); // Render shortcodes
+
+    $content .= $desc;
+  }*/
+
+  // Query for category posts
+  $categoryPostsArgs = array(
+    'post_type' => 'post',
+    'order' => 'DESC',
+    'orderby' => 'date',
+    'tax_query' => array(
+      array(
+        'taxonomy' => 'category',
+        'field'    => 'slug',
+        'terms'    => $category->slug,
+      ),
+    ),
+    'posts_per_page' => 6
+  );
+  $categoryPosts = new WP_Query($categoryPostsArgs);
+
+  // Loop through each post in the category
+  $postCount = 0;
+  while($categoryPosts->have_posts()) {
+
+    $postCount++;
+    $categoryPosts->the_post();
+/*
+    //==========================List View Container===============================
+
+    // Post thumbnail
+    $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
+    $content .= '<div class="usa-width-one-third">';
+    $content .= '<figure class="wp-caption">';
+    $content .= get_the_post_thumbnail(null, 'thumbnail');
+
+    // Post thumbnail
+    $content .= '<figcaption class="wp-caption-text">'.get_the_post_thumbnail_caption().'</figcaption>';
+    $content .= '</figure>';
+    $content .= '</div>';
+
+    // Post title
+    $content .= '<div class="usa-width-two-thirds">';
+    $content .= '<h3><a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'">'.get_the_title().'</a></h3>';
+
+    // Post excerpt
+    $content .= '<p>'.get_the_excerpt().'</p>';
+    $content .= '</div>';
+    $content .= '</article>';
+
+    //=========================End of List View====================================
+*/
+    //==========================Grid View Container================================
+
+    if($postCount % 3 == 1)
+      $content .= '<div class="usa-grid-full">';
+
+    // Grid item
+    $content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
+
+    // Post image
+    $content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
+
+    // Post title
+    $content .= '<div class="grc-grid-item-label">';
+    $content .= get_the_title();
+    $content .= '</div>';
+
+    // Overlay
+    $content .= '<div class="grc-grid-item-overlay">';
+    $content .= '<div class="grc-grid-item-text">';
+
+    // Overlay text
+    $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+    $content .= '</div>';
+    $content .= '</div>';
+
+    $content .= '</a>';
+
+    if($postCount % 3 == 0)
+      $content .= '</div>'; // USA Grid Full
+
+    //======================End of Grid View Container===============================
+  }
+
+  if($postCount % 3 != 0) {
+    $content .= '</div>'; // USA Grid Full
+  }
+  
+  if($categoryPosts->found_posts > 6) { // if there are more than 6 posts in the category display see more posts link.
+    $content .= '<div class="usa-grid-full"><div class="usa-width-one-whole"><a href="' . get_category_link($category->cat_ID) . '" class="usa-button usa-button-secondary">More ' . $category->name . ' news</a></div></div>'; // USA Grid Full
+  }
+
+  // Reset the WP_Query globals
+  wp_reset_postdata();
+
+  // Return the formatted HTML
+  $content .= '</div>';
+  return $content;
+}
+add_shortcode('category-posts-list', 'categoryPostsList');
 
 /**
  * Pull NASA.gov posts via API
