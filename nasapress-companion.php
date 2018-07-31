@@ -29,11 +29,122 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
   return $out;
 }
 
+function displayCatPages($orderby, $categoryId, $display, $includeChildren) {
+  
+  $content = "";
+  
+  // Query for category pages
+  $categoryPagesArgs = array(
+    'post_type' => 'page',
+    'order' => 'ASC',
+    'orderby' => $orderby,
+    'tax_query' => array(
+      array(
+        'taxonomy' => 'category',
+        'terms'    => $categoryId,
+        'include_children' => $includeChildren,
+      ),
+    ),
+    'posts_per_page' => -1
+  );
+  $categoryPages = new WP_Query($categoryPagesArgs);
+
+  // Loop through each page in the category
+  $pageCount = 0;
+  while($categoryPages->have_posts()) {
+
+    $pageCount++;
+    $categoryPages->the_post();
+
+//==========================List View Container===============================
+    if($display == 'both' || $display == 'list') {
+      // Page thumbnail
+      $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
+      $content .= '<div class="usa-width-one-third">';
+      $content .= '<figure class="wp-caption">';
+      $content .= get_the_post_thumbnail(null, 'thumbnail');
+
+      // Page thumbnail
+      $content .= '<figcaption class="wp-caption-text">'.get_the_post_thumbnail_caption().'</figcaption>';
+      $content .= '</figure>';
+      $content .= '</div>';
+
+      // Page title
+      $content .= '<div class="usa-width-two-thirds">';
+      $content .= '<h3><a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'">'.get_the_title().'</a></h3>';
+
+      // Page excerpt
+      $content .= '<p>'.get_the_excerpt().'</p>';
+      $content .= '</div>';
+      $content .= '</article>';
+
+//=========================End of List View====================================
+    }
+    if ($display == 'both' || $display == 'grid') {
+//==========================Grid View Container================================
+
+      if($pageCount % 3 == 1)
+        $content .= '<div class="usa-grid-full">';
+
+      // Grid item
+      $content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
+
+      // Page image
+      $content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
+
+      // Page title
+      $content .= '<div class="grc-grid-item-label">';
+      $content .= get_the_title();
+      $content .= '</div>';
+
+      // Overlay
+      $content .= '<div class="grc-grid-item-overlay">';
+      $content .= '<div class="grc-grid-item-text">';
+
+      // Overlay text
+      $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+      $content .= '</div>';
+      $content .= '</div>';
+
+      $content .= '</a>';
+
+      if($pageCount % 3 == 0)
+        $content .= '</div>'; // USA Grid Full
+
+//======================End of Grid View Containe===============================
+    }
+  }
+
+  if($pageCount % 3 != 0) {
+    $content .= '</div>'; // USA Grid Full
+  }
+
+  // Reset the WP_Query globals
+  wp_reset_postdata();
+  
+  return $content;
+}
+
 //==============================================================================
 /**
  * Add shortcode for category listings
+ * 
+ * Shortcode parameters:
+ *  display: both (default), grid, list
+ *    Display options. Only both will show the view toggle buttons.
+ *  slug: {category slug}
+ *  which: childCats (default), thisCat
+ *    Choose whether to list pages in this category, or in sections by child category.
+ *  includechildren: yes (default), no
+ *    Choose whether to include pages that are in a subcategory.
+ *  orderby: menu_order (default), title
+ * 
  */
 function categoryList( $atts ) {
+  $which = is_array($atts) && array_key_exists('which', $atts) ? $atts['which'] : 'childCats';
+  $includeChildren = is_array($atts) && array_key_exists('includechildren', $atts) ? $atts['includechildren'] : true;
+  $includeChildren = $includeChildren === "no" ? false : true;
+  $display = is_array($atts) && array_key_exists('display', $atts) ? $atts['display'] : 'both';
   $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
   $orderby = $orderby == 'title' ? 'title' : 'menu_order';
   
@@ -44,111 +155,35 @@ function categoryList( $atts ) {
   $disableGridBtn = '';
 
 	// Gridview and Listview button
-	$content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
-
-  // Get any direct children of the current category
-  $childrenCategoryArgs = array('parent' => $categoryId);
-  $childrenCategories = get_categories($childrenCategoryArgs);
-
-  // Loop through each category
-  foreach($childrenCategories as $category) {
-
-    // Category title
-    $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
-
-		if($category->description) {
-
-	    $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
-	    $desc = do_shortcode( $desc ); // Render shortcodes
-
-			$content .= $desc;
-		}
-
-    // Query for category pages
-    $categoryPagesArgs = array(
-      'post_type' => 'page',
-      'order' => 'ASC',
-      'orderby' => $orderby,
-      'taxonomy' => 'category',
-      'field' => 'slug',
-      'term' => $category->slug,
-			'posts_per_page' => -1
-    );
-    $categoryPages = new WP_Query($categoryPagesArgs);
-
-    // Loop through each page in the category
-    $pageCount = 0;
-    while($categoryPages->have_posts()) {
-
-      $pageCount++;
-      $categoryPages->the_post();
-
-	//==========================List View Container===============================
-
-        // Page thumbnail
-        $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
-        $content .= '<div class="usa-width-one-third">';
-        $content .= '<figure class="wp-caption">';
-        $content .= get_the_post_thumbnail(null, 'thumbnail');
-
-        // Page thumbnail
-        $content .= '<figcaption class="wp-caption-text">'.get_the_post_thumbnail_caption().'</figcaption>';
-        $content .= '</figure>';
-        $content .= '</div>';
-
-        // Page title
-        $content .= '<div class="usa-width-two-thirds">';
-        $content .= '<h3><a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'">'.get_the_title().'</a></h3>';
-
-        // Page excerpt
-        $content .= '<p>'.get_the_excerpt().'</p>';
-        $content .= '</div>';
-        $content .= '</article>';
-
- //=========================End of List View====================================
-
- //==========================Grid View Container================================
-
-				if($pageCount % 3 == 1)
-					$content .= '<div class="usa-grid-full">';
-
-				// Grid item
-				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
-
-				// Page image
-				$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
-
-				// Page title
-				$content .= '<div class="grc-grid-item-label">';
-				$content .= get_the_title();
-				$content .= '</div>';
-
-				// Overlay
-				$content .= '<div class="grc-grid-item-overlay">';
-				$content .= '<div class="grc-grid-item-text">';
-
-				// Overlay text
-				$content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
-				$content .= '</div>';
-				$content .= '</div>';
-
-				$content .= '</a>';
-
-				if($pageCount % 3 == 0)
-					$content .= '</div>'; // USA Grid Full
-
-//======================End of Grid View Containe===============================
-			}
-
-			if($pageCount % 3 != 0) {
-				$content .= '</div>'; // USA Grid Full
-			}
-
-    // Reset the WP_Query globals
-    wp_reset_postdata();
+  if($display == 'both') {
+    $content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
   }
 
+  if($which == 'thisCat') {
+    $content .= displayCatPages($orderby, $categoryId, $display, $includeChildren);
+  }
+  elseif($which == 'childCats') {
+    // Get any direct children of the current category
+    $childrenCategoryArgs = array('parent' => $categoryId);
+    $childrenCategories = get_categories($childrenCategoryArgs);
 
+    foreach($childrenCategories as $category) {
+
+      // Category title
+      $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
+
+      if($category->description) {
+
+        $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
+        $desc = do_shortcode( $desc ); // Render shortcodes
+
+        $content .= $desc;
+      }
+
+      $content .= displayCatPages($orderby, $category->term_id, $display, $includeChildren);
+    }
+  }
+  
   // Return the formatted HTML
   $content .= '</div>';
   return $content;
@@ -160,13 +195,19 @@ add_shortcode('category-list', 'categoryList');
 /**
  * Add shortcode for child page listings
  * Shortcode parameters:
- *  display: [both (default), grid, list]
+ *  display: both (default), grid, list
  *    Display options. Only both will show the view toggle buttons.
- *  columns: [3 (default), 4]
+ *  columns: 3 (default), 4
  *    Only applies to display: grid, or both.
- *  parent: [{current page id} (default), {some other page id}]
- * fullgrid: [yes (default), no]
- *   Displays listing in usa-grid-full or just usa-grid.
+ *  parent: {current page id} (default), {some other page id}
+ *  fullgrid: yes (default), no
+ *    Displays listing in usa-grid-full or just usa-grid.
+ *  orderby: menu_order (default), title
+ *    Does not apply if pages parameter is set.
+ *  limit: {-1} (default), {another whole number}
+ *    Choose to limit how many pages display. -1 = no limit.
+ *  pages: {comma separated list of child page IDs to display}
+ *   pages will be displayed in the order they are listed in; orderby parameter does not apply.
  */
 function childrenList( $atts ) {
   $content = '<div class="grc-list">';
