@@ -468,7 +468,8 @@ add_shortcode('category-posts-list', 'categoryPostsList');
  * Pull NASA.gov posts via API
  */
 function display_portal_posts( $atts ) {
-	// Shortcode attributes
+  // Shortcode attributes
+  $collection = is_array($atts) && array_key_exists('collection', $atts) && preg_match('/[0-9]+/', $atts['collection']) ? $atts['collection'] : '7460';
 	$columns = is_array($atts) && array_key_exists('columns', $atts) ? $atts['columns'] : 4;
 	$fullGrid = is_array($atts) && array_key_exists('fullgrid', $atts) ? $atts['fullgrid'] : 'yes';
 	$limit = is_array($atts) && array_key_exists('limit', $atts) ? $atts['limit'] : 4;
@@ -476,27 +477,23 @@ function display_portal_posts( $atts ) {
 	// CSS class manupulations
 	$gridColumns = $columns == 4 ? 'one-fourth' : 'one-third';
   $gridType = $fullGrid == 'yes' ? '-full' : '';
+  $usingCache = false;
 
   if(environment() != 'development') {
 		$memcache = new Memcache;
 		$memcache->connect('127.0.0.1', 11211);
-		$grcNews = false;
 		if($memcache) {
-			$grcNews = $memcache->get('grc-news');
+      $grcNews = $memcache->get('portal-'.$collection);
+      $usingCache = true;
 		}
 	}
-	else {
-		$grcNews = false;
-	}
 
-  $nodeList == false;
-
-  if($grcNews === false) { // No valid cached values
+  if(!$usingCache) { // No valid cached values
     // API Endpoints
-    $nasaApiUrl = 'https://www.nasa.gov/api/1';
+    $nasaApiUrl = 'https://www.nasa.gov/api/2';
     //todo-config
-    $nasaQueryUrl = '/query/ubernodes.json?collections%5B%5D=7460&limit=24&offset=0&unType%5B%5D=feature&unType%5B%5D=image';
-    $nasaRecordUrl = '/record/node';
+    $nasaQueryUrl = '/ubernode/_search?size=24&from=0&sort=promo-date-time%3Adesc&q=((ubernode-type%3Afeature%20OR%20ubernode-type%3Aimage%20OR%20ubernode-type%3Acollection_asset)%20AND%20(collections%3A'.$collection.'))&_source_include=promo-date-time%2Cmaster-image%2Cnid%2Ctitle%2Ctopics%2Cmissions%2Ccollections%2Cother-tags%2Cubernode-type%2Cprimary-tag%2Csecondary-tag%2Ccardfeed-title%2Ctype%2Ccollection-asset-link%2Clink-or-attachment%2Cpr-leader-sentence%2Cimage-feature-caption%2Cattachments%2Curi';
+    $nasaImageURL = '/sites/default/files/styles/1x1_cardfeed/public/';
 
     // Fetch collection of Ubernodes
     $apiResponse = wp_remote_get($nasaApiUrl.$nasaQueryUrl);
@@ -505,13 +502,15 @@ function display_portal_posts( $atts ) {
       return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
     }
 
-    $jsonResponse = json_decode($apiResponse['body']);
-    $nodeList = $jsonResponse->ubernodes;
-    $grcNews = $nodeList;
-    $grcNewsToCache = [];
+    $grcNews = json_decode($apiResponse['body']);
+    $grcNews = $grcNews->hits->hits;
+
+    if(!is_array($grcNews)) {
+      return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
+    }
   }
 
-	$content = '<div class="grc-list usa-grid">';
+	$content = '<div class="grc-list portal-news usa-grid'.$gridType.'">';
 	$i = 0;
 
 	// Loop through each Ubernode (Post)
@@ -520,38 +519,23 @@ function display_portal_posts( $atts ) {
 			break;
 		}
 
-    if($nodeList) { // Not using cached values.
-      // Query for the individual Ubernode (post) information
-      $apiResponse = wp_remote_get($nasaApiUrl.$nasaRecordUrl.'/'.$node->nid.'.json');
-
-      if(is_wp_error($apiResponse)) {
-        return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
-      }
-
-      $grcNewsNode = json_decode($apiResponse['body']);
-      $grcNewsToCache[] = $grcNewsNode;
-    }
-    else { // Using cached values
-      $grcNewsNode = $node;
-    }
-
 		// Format the post
-		$content .= '<a href="https://www.nasa.gov'.esc_attr($grcNewsNode->ubernode->uri).'" class="usa-width-' . $gridColumns . ' grc-grid-item">';
+		$content .= '<a href="https://www.nasa.gov'.esc_attr($node->_source->uri).'" class="usa-width-' . $gridColumns . ' grc-grid-item">';
 
 		// Page image
-		$content .= '<img class="grc-grid-item-image wp-post-image grc-grid-item-image" src="https://www.nasa.gov'.esc_attr($grcNewsNode->images[0]->crop1x1).'" alt="" width="300" height="300" />';
+		$content .= '<img class="grc-grid-item-image wp-post-image grc-grid-item-image" src="https://www.nasa.gov'.$nasaImageURL.esc_attr(ltrim($node->_source->{'master-image'}->uri, 'public://')).'" alt="" width="300" height="300" />';
 
 		// Page title
 		$content .= '<div class="grc-grid-item-label">';
-		$content .= esc_html($grcNewsNode->ubernode->title);
+		$content .= esc_html($node->_source->{'cardfeed-title'});
 		$content .= '<i class="fa fa-external-link" aria-hidden="true"></i></div>';
 
 		// Overlay
 		$content .= '<div class="grc-grid-item-overlay">';
 		$content .= '<div class="grc-grid-item-text">';
 
-		// Overlay text
-		$content .= esc_html(the_excerpt_max_charlength($grcNewsNode->ubernode->imageFeatureCaption ? $grcNewsNode->ubernode->imageFeatureCaption : $grcNewsNode->ubernode->body ? wp_strip_all_tags($grcNewsNode->ubernode->body) : 'Read more', 160));
+    // Overlay text
+		$content .= esc_html(the_excerpt_max_charlength($node->_source->{'image-feature-caption'} ? $node->_source->{'image-feature-caption'} : ($node->_source->{'pr-leader-sentence'} ? wp_strip_all_tags($node->_source->{'pr-leader-sentence'}) : 'Read more'), 160));
 		$content .= '<i class="fa fa-external-link" aria-hidden="true"></i></div>';
 		$content .= '</div>';
 
@@ -561,8 +545,8 @@ function display_portal_posts( $atts ) {
 	}
 
   if(environment() != 'development') {
-    if($nodeList) { // If $nodeList is false it means we are using cached values.
-      $memcache->set('grc-news', $grcNewsToCache, 0, 86400); // Cache for one day.
+    if(!$usingCache) { // If $nodeList is false it means we are using cached values.
+      $memcache->set('portal-'.$collection, $grcNews, 0, 1800); // Cache for 30 minutes.
     }
     $memcache->close();
   }
