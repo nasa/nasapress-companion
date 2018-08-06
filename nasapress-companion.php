@@ -477,6 +477,7 @@ function display_portal_posts( $atts ) {
 	// CSS class manupulations
 	$gridColumns = $columns == 4 ? 'one-fourth' : 'one-third';
   $gridType = $fullGrid == 'yes' ? '-full' : '';
+  $nasaImageURL = '/sites/default/files/styles/1x1_cardfeed/public/';
   $usingCache = false;
 
   if(environment() != 'development') {
@@ -493,7 +494,6 @@ function display_portal_posts( $atts ) {
     $nasaApiUrl = 'https://www.nasa.gov/api/2';
     //todo-config
     $nasaQueryUrl = '/ubernode/_search?size=24&from=0&sort=promo-date-time%3Adesc&q=((ubernode-type%3Afeature%20OR%20ubernode-type%3Aimage%20OR%20ubernode-type%3Acollection_asset)%20AND%20(collections%3A'.$collection.'))&_source_include=promo-date-time%2Cmaster-image%2Cnid%2Ctitle%2Ctopics%2Cmissions%2Ccollections%2Cother-tags%2Cubernode-type%2Cprimary-tag%2Csecondary-tag%2Ccardfeed-title%2Ctype%2Ccollection-asset-link%2Clink-or-attachment%2Cpr-leader-sentence%2Cimage-feature-caption%2Cattachments%2Curi';
-    $nasaImageURL = '/sites/default/files/styles/1x1_cardfeed/public/';
 
     // Fetch collection of Ubernodes
     $apiResponse = wp_remote_get($nasaApiUrl.$nasaQueryUrl);
