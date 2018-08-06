@@ -484,7 +484,7 @@ function display_portal_posts( $atts ) {
 		$memcache->connect('127.0.0.1', 11211);
 		if($memcache) {
       $grcNews = $memcache->get('portal-'.$collection);
-      $usingCache = true;
+      $usingCache = $grcNews === false ? false : true;
 		}
 	}
 
