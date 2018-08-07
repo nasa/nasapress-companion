@@ -29,11 +29,122 @@ function the_excerpt_max_charlength($excerpt, $charlength) {
   return $out;
 }
 
+function displayCatPages($orderby, $categoryId, $display, $includeChildren) {
+  
+  $content = "";
+  
+  // Query for category pages
+  $categoryPagesArgs = array(
+    'post_type' => 'page',
+    'order' => 'ASC',
+    'orderby' => $orderby,
+    'tax_query' => array(
+      array(
+        'taxonomy' => 'category',
+        'terms'    => $categoryId,
+        'include_children' => $includeChildren,
+      ),
+    ),
+    'posts_per_page' => -1
+  );
+  $categoryPages = new WP_Query($categoryPagesArgs);
+
+  // Loop through each page in the category
+  $pageCount = 0;
+  while($categoryPages->have_posts()) {
+
+    $pageCount++;
+    $categoryPages->the_post();
+
+//==========================List View Container===============================
+    if($display == 'both' || $display == 'list') {
+      // Page thumbnail
+      $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
+      $content .= '<div class="usa-width-one-third">';
+      $content .= '<figure class="wp-caption">';
+      $content .= get_the_post_thumbnail(null, 'thumbnail');
+
+      // Page thumbnail
+      $content .= '<figcaption class="wp-caption-text">'.get_the_post_thumbnail_caption().'</figcaption>';
+      $content .= '</figure>';
+      $content .= '</div>';
+
+      // Page title
+      $content .= '<div class="usa-width-two-thirds">';
+      $content .= '<h3><a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'">'.get_the_title().'</a></h3>';
+
+      // Page excerpt
+      $content .= '<p>'.get_the_excerpt().'</p>';
+      $content .= '</div>';
+      $content .= '</article>';
+
+//=========================End of List View====================================
+    }
+    if ($display == 'both' || $display == 'grid') {
+//==========================Grid View Container================================
+
+      if($pageCount % 3 == 1)
+        $content .= '<div class="usa-grid-full">';
+
+      // Grid item
+      $content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
+
+      // Page image
+      $content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
+
+      // Page title
+      $content .= '<div class="grc-grid-item-label">';
+      $content .= get_the_title();
+      $content .= '</div>';
+
+      // Overlay
+      $content .= '<div class="grc-grid-item-overlay">';
+      $content .= '<div class="grc-grid-item-text">';
+
+      // Overlay text
+      $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+      $content .= '</div>';
+      $content .= '</div>';
+
+      $content .= '</a>';
+
+      if($pageCount % 3 == 0)
+        $content .= '</div>'; // USA Grid Full
+
+//======================End of Grid View Containe===============================
+    }
+  }
+
+  if($pageCount % 3 != 0) {
+    $content .= '</div>'; // USA Grid Full
+  }
+
+  // Reset the WP_Query globals
+  wp_reset_postdata();
+  
+  return $content;
+}
+
 //==============================================================================
 /**
  * Add shortcode for category listings
+ * 
+ * Shortcode parameters:
+ *  display: both (default), grid, list
+ *    Display options. Only both will show the view toggle buttons.
+ *  slug: {category slug}
+ *  which: childCats (default), thisCat
+ *    Choose whether to list pages in this category, or in sections by child category.
+ *  includechildren: yes (default), no
+ *    Choose whether to include pages that are in a subcategory.
+ *  orderby: menu_order (default), title
+ * 
  */
 function categoryList( $atts ) {
+  $which = is_array($atts) && array_key_exists('which', $atts) ? $atts['which'] : 'childCats';
+  $includeChildren = is_array($atts) && array_key_exists('includechildren', $atts) ? $atts['includechildren'] : true;
+  $includeChildren = $includeChildren === "no" ? false : true;
+  $display = is_array($atts) && array_key_exists('display', $atts) ? $atts['display'] : 'both';
   $orderby = is_array($atts) && array_key_exists('orderby', $atts) ? $atts['orderby'] : 'menu_order';
   $orderby = $orderby == 'title' ? 'title' : 'menu_order';
   
@@ -44,111 +155,35 @@ function categoryList( $atts ) {
   $disableGridBtn = '';
 
 	// Gridview and Listview button
-	$content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
-
-  // Get any direct children of the current category
-  $childrenCategoryArgs = array('parent' => $categoryId);
-  $childrenCategories = get_categories($childrenCategoryArgs);
-
-  // Loop through each category
-  foreach($childrenCategories as $category) {
-
-    // Category title
-    $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
-
-		if($category->description) {
-
-	    $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
-	    $desc = do_shortcode( $desc ); // Render shortcodes
-
-			$content .= $desc;
-		}
-
-    // Query for category pages
-    $categoryPagesArgs = array(
-      'post_type' => 'page',
-      'order' => 'ASC',
-      'orderby' => $orderby,
-      'taxonomy' => 'category',
-      'field' => 'slug',
-      'term' => $category->slug,
-			'posts_per_page' => -1
-    );
-    $categoryPages = new WP_Query($categoryPagesArgs);
-
-    // Loop through each page in the category
-    $pageCount = 0;
-    while($categoryPages->have_posts()) {
-
-      $pageCount++;
-      $categoryPages->the_post();
-
-	//==========================List View Container===============================
-
-        // Page thumbnail
-        $content .= '<article class="listView usa-grid-full grc-facilities-facility">';
-        $content .= '<div class="usa-width-one-third">';
-        $content .= '<figure class="wp-caption">';
-        $content .= get_the_post_thumbnail(null, 'thumbnail');
-
-        // Page thumbnail
-        $content .= '<figcaption class="wp-caption-text">'.get_the_post_thumbnail_caption().'</figcaption>';
-        $content .= '</figure>';
-        $content .= '</div>';
-
-        // Page title
-        $content .= '<div class="usa-width-two-thirds">';
-        $content .= '<h3><a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'">'.get_the_title().'</a></h3>';
-
-        // Page excerpt
-        $content .= '<p>'.get_the_excerpt().'</p>';
-        $content .= '</div>';
-        $content .= '</article>';
-
- //=========================End of List View====================================
-
- //==========================Grid View Container================================
-
-				if($pageCount % 3 == 1)
-					$content .= '<div class="usa-grid-full">';
-
-				// Grid item
-				$content .= '<a title="'.the_title_attribute(array('echo' => false)).'" href="'.get_the_permalink().'" class=" gridView usa-width-one-third grc-grid-item ">';
-
-				// Page image
-				$content .= get_the_post_thumbnail(null, 'thumbnail', array( 'class' => 'grc-grid-item-image' ));
-
-				// Page title
-				$content .= '<div class="grc-grid-item-label">';
-				$content .= get_the_title();
-				$content .= '</div>';
-
-				// Overlay
-				$content .= '<div class="grc-grid-item-overlay">';
-				$content .= '<div class="grc-grid-item-text">';
-
-				// Overlay text
-				$content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
-				$content .= '</div>';
-				$content .= '</div>';
-
-				$content .= '</a>';
-
-				if($pageCount % 3 == 0)
-					$content .= '</div>'; // USA Grid Full
-
-//======================End of Grid View Containe===============================
-			}
-
-			if($pageCount % 3 != 0) {
-				$content .= '</div>'; // USA Grid Full
-			}
-
-    // Reset the WP_Query globals
-    wp_reset_postdata();
+  if($display == 'both') {
+    $content .= '<button id="switchViewBtn" class="usa-button usa-button-secondary grc-grid-view-links"><i class="fa fa-list" aria-hidden="true"></i> Switch to List View</button>';
   }
 
+  if($which == 'thisCat') {
+    $content .= displayCatPages($orderby, $categoryId, $display, $includeChildren);
+  }
+  elseif($which == 'childCats') {
+    // Get any direct children of the current category
+    $childrenCategoryArgs = array('parent' => $categoryId);
+    $childrenCategories = get_categories($childrenCategoryArgs);
 
+    foreach($childrenCategories as $category) {
+
+      // Category title
+      $content .= '<h2 class="usa-heading">'.$category->name.'</h2>';
+
+      if($category->description) {
+
+        $desc = wpautop( $category->description ); // Wrap paragraphs in p tags
+        $desc = do_shortcode( $desc ); // Render shortcodes
+
+        $content .= $desc;
+      }
+
+      $content .= displayCatPages($orderby, $category->term_id, $display, $includeChildren);
+    }
+  }
+  
   // Return the formatted HTML
   $content .= '</div>';
   return $content;
@@ -160,13 +195,19 @@ add_shortcode('category-list', 'categoryList');
 /**
  * Add shortcode for child page listings
  * Shortcode parameters:
- *  display: [both (default), grid, list]
+ *  display: both (default), grid, list
  *    Display options. Only both will show the view toggle buttons.
- *  columns: [3 (default), 4]
+ *  columns: 3 (default), 4
  *    Only applies to display: grid, or both.
- *  parent: [{current page id} (default), {some other page id}]
- * fullgrid: [yes (default), no]
- *   Displays listing in usa-grid-full or just usa-grid.
+ *  parent: {current page id} (default), {some other page id}
+ *  fullgrid: yes (default), no
+ *    Displays listing in usa-grid-full or just usa-grid.
+ *  orderby: menu_order (default), title
+ *    Does not apply if pages parameter is set.
+ *  limit: {-1} (default), {another whole number}
+ *    Choose to limit how many pages display. -1 = no limit.
+ *  pages: {comma separated list of child page IDs to display}
+ *   pages will be displayed in the order they are listed in; orderby parameter does not apply.
  */
 function childrenList( $atts ) {
   $content = '<div class="grc-list">';
@@ -427,7 +468,8 @@ add_shortcode('category-posts-list', 'categoryPostsList');
  * Pull NASA.gov posts via API
  */
 function display_portal_posts( $atts ) {
-	// Shortcode attributes
+  // Shortcode attributes
+  $collection = is_array($atts) && array_key_exists('collection', $atts) && preg_match('/[0-9]+/', $atts['collection']) ? $atts['collection'] : '7460';
 	$columns = is_array($atts) && array_key_exists('columns', $atts) ? $atts['columns'] : 4;
 	$fullGrid = is_array($atts) && array_key_exists('fullgrid', $atts) ? $atts['fullgrid'] : 'yes';
 	$limit = is_array($atts) && array_key_exists('limit', $atts) ? $atts['limit'] : 4;
@@ -435,28 +477,26 @@ function display_portal_posts( $atts ) {
 	// CSS class manupulations
 	$gridColumns = $columns == 4 ? 'one-fourth' : 'one-third';
   $gridType = $fullGrid == 'yes' ? '-full' : '';
+  $nasaImageURL = '/sites/default/files/styles/1x1_cardfeed/public/';
+  $usingCache = false;
 
   if(environment() != 'development') {
-		$memcache = new Memcache;
+    $memcache = new Memcache;
+    
     //todo-config
 		$memcache->connect('YOUR_MEMCACHE_HOST', YOUR_MEMCACHE_PORT);
-		$grcNews = false;
+
 		if($memcache) {
-			$grcNews = $memcache->get('grc-news');
+      $grcNews = $memcache->get('portal-'.$collection);
+      $usingCache = $grcNews === false ? false : true;
 		}
 	}
-	else {
-		$grcNews = false;
-	}
 
-  $nodeList == false;
-
-  if($grcNews === false) { // No valid cached values
+  if(!$usingCache) { // No valid cached values
     // API Endpoints
-    $nasaApiUrl = 'https://www.nasa.gov/api/1';
+    $nasaApiUrl = 'https://www.nasa.gov/api/2';
     //todo-config
-    $nasaQueryUrl = '/query/ubernodes.json?collections%5B%5D=7460&limit=24&offset=0&unType%5B%5D=feature&unType%5B%5D=image';
-    $nasaRecordUrl = '/record/node';
+    $nasaQueryUrl = '/ubernode/_search?size=24&from=0&sort=promo-date-time%3Adesc&q=((ubernode-type%3Afeature%20OR%20ubernode-type%3Aimage%20OR%20ubernode-type%3Acollection_asset)%20AND%20(collections%3A'.$collection.'))&_source_include=promo-date-time%2Cmaster-image%2Cnid%2Ctitle%2Ctopics%2Cmissions%2Ccollections%2Cother-tags%2Cubernode-type%2Cprimary-tag%2Csecondary-tag%2Ccardfeed-title%2Ctype%2Ccollection-asset-link%2Clink-or-attachment%2Cpr-leader-sentence%2Cimage-feature-caption%2Cattachments%2Curi';
 
     // Fetch collection of Ubernodes
     $apiResponse = wp_remote_get($nasaApiUrl.$nasaQueryUrl);
@@ -465,13 +505,15 @@ function display_portal_posts( $atts ) {
       return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
     }
 
-    $jsonResponse = json_decode($apiResponse['body']);
-    $nodeList = $jsonResponse->ubernodes;
-    $grcNews = $nodeList;
-    $grcNewsToCache = [];
+    $grcNews = json_decode($apiResponse['body']);
+    $grcNews = $grcNews->hits->hits;
+
+    if(!is_array($grcNews)) {
+      return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
+    }
   }
 
-	$content = '<div class="grc-list usa-grid">';
+	$content = '<div class="grc-list portal-news usa-grid'.$gridType.'">';
 	$i = 0;
 
 	// Loop through each Ubernode (Post)
@@ -480,38 +522,23 @@ function display_portal_posts( $atts ) {
 			break;
 		}
 
-    if($nodeList) { // Not using cached values.
-      // Query for the individual Ubernode (post) information
-      $apiResponse = wp_remote_get($nasaApiUrl.$nasaRecordUrl.'/'.$node->nid.'.json');
-
-      if(is_wp_error($apiResponse)) {
-        return '<div class="grc-list usa-grid">Error fetching NASA Portal posts :(</div>';
-      }
-
-      $grcNewsNode = json_decode($apiResponse['body']);
-      $grcNewsToCache[] = $grcNewsNode;
-    }
-    else { // Using cached values
-      $grcNewsNode = $node;
-    }
-
 		// Format the post
-		$content .= '<a href="https://www.nasa.gov'.esc_attr($grcNewsNode->ubernode->uri).'" class="usa-width-' . $gridColumns . ' grc-grid-item">';
+		$content .= '<a href="https://www.nasa.gov'.esc_attr($node->_source->uri).'" class="usa-width-' . $gridColumns . ' grc-grid-item">';
 
 		// Page image
-		$content .= '<img class="grc-grid-item-image wp-post-image grc-grid-item-image" src="https://www.nasa.gov'.esc_attr($grcNewsNode->images[0]->crop1x1).'" alt="" width="300" height="300" />';
+		$content .= '<img class="grc-grid-item-image wp-post-image grc-grid-item-image" src="https://www.nasa.gov'.$nasaImageURL.esc_attr(ltrim($node->_source->{'master-image'}->uri, 'public://')).'" alt="" width="300" height="300" />';
 
 		// Page title
 		$content .= '<div class="grc-grid-item-label">';
-		$content .= esc_html($grcNewsNode->ubernode->title);
+		$content .= esc_html($node->_source->{'cardfeed-title'});
 		$content .= '<i class="fa fa-external-link" aria-hidden="true"></i></div>';
 
 		// Overlay
 		$content .= '<div class="grc-grid-item-overlay">';
 		$content .= '<div class="grc-grid-item-text">';
 
-		// Overlay text
-		$content .= esc_html(the_excerpt_max_charlength($grcNewsNode->ubernode->imageFeatureCaption ? $grcNewsNode->ubernode->imageFeatureCaption : $grcNewsNode->ubernode->body ? wp_strip_all_tags($grcNewsNode->ubernode->body) : 'Read more', 160));
+    // Overlay text
+		$content .= esc_html(the_excerpt_max_charlength($node->_source->{'image-feature-caption'} ? $node->_source->{'image-feature-caption'} : ($node->_source->{'pr-leader-sentence'} ? wp_strip_all_tags($node->_source->{'pr-leader-sentence'}) : 'Read more'), 160));
 		$content .= '<i class="fa fa-external-link" aria-hidden="true"></i></div>';
 		$content .= '</div>';
 
@@ -521,8 +548,8 @@ function display_portal_posts( $atts ) {
 	}
 
   if(environment() != 'development') {
-    if($nodeList) { // If $nodeList is false it means we are using cached values.
-      $memcache->set('grc-news', $grcNewsToCache, 0, 86400); // Cache for one day.
+    if(!$usingCache) { // If $nodeList is false it means we are using cached values.
+      $memcache->set('portal-'.$collection, $grcNews, 0, 1800); // Cache for 30 minutes.
     }
     $memcache->close();
   }
