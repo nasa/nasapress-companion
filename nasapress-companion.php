@@ -95,6 +95,7 @@ function displayCatPages($orderby, $categoryId, $display, $includeChildren) {
       // Page title
       $content .= '<div class="grc-grid-item-label">';
       $content .= get_the_title();
+      $content .= externalText(get_the_ID());
       $content .= '</div>';
 
       // Overlay
@@ -103,6 +104,7 @@ function displayCatPages($orderby, $categoryId, $display, $includeChildren) {
 
       // Overlay text
       $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+      $content .= externalText(get_the_ID());
       $content .= '</div>';
       $content .= '</div>';
 
@@ -315,6 +317,7 @@ function childrenList( $atts ) {
         // Page title
         $content .= '<div class="grc-grid-item-label">';
         $content .= get_the_title();
+        $content .= externalText(get_the_ID());
         $content .= '</div>';
 
         // Overlay
@@ -323,6 +326,7 @@ function childrenList( $atts ) {
 
         // Overlay text
         $content .= the_excerpt_max_charlength(get_the_excerpt(), 160);
+        $content .= externalText(get_the_ID());
         $content .= '</div>';
         $content .= '</div>';
 
@@ -752,3 +756,22 @@ function request_data( $url ) {
 	return $response;
 
 } // end request_data
+
+function externalText($id) {
+  $external = '';
+  $linksto = get_post_meta($id, "_links_to");
+  $linksto = is_array($linksto) && $linksto[0] ? $linksto[0] : null;
+  $linksto = substr( $linksto, 0, 4 ) !== "http" && substr( $linksto, 0, 1 ) !== "/" ? 'https://' . $linksto : $linksto;
+
+  if($linksto && filter_var($linksto, FILTER_VALIDATE_URL) && isexternal($linksto)) {
+    $external = '<i class="fa fa-external-link" aria-hidden="true"></i>';
+  }
+  return $external;
+}
+
+function isexternal($url) {
+  $components = parse_url($url);
+  $host = parse_url(get_site_url());
+  $host = $host['host'];
+  return !empty($components['host']) && !empty($host) && strcasecmp($components['host'], $host); // empty host will indicate url like '/relative.php'
+}
